@@ -21,7 +21,9 @@ export function TaskCard({ group }: TaskCardProps) {
             <span>{group.emoji}</span>
             <span>{group.title}</span>
           </CardTitle>
-          <StatusBadge status={group.status} />
+          <div className="flex-shrink-0">
+            <StatusBadge status={group.status} progress={progress} />
+          </div>
         </div>
         {group.description && (
           <p className="text-sm text-muted-foreground mt-1">{group.description}</p>
@@ -80,15 +82,26 @@ export function TaskCard({ group }: TaskCardProps) {
   );
 }
 
-function StatusBadge({ status }: { status: TaskGroup["status"] }) {
+function StatusBadge({ status, progress }: { status: TaskGroup["status"]; progress: number }) {
+  if (status === "idea") {
+    return (
+      <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-purple-50 text-purple-700 border-purple-200">
+        構思中
+      </span>
+    );
+  }
+
+  const derived =
+    progress === 100 ? "done" : progress === 0 ? "pending" : "todo";
+
   const config = {
-    todo: { label: "進行中", className: "bg-accent-light text-accent border-accent/20" },
-    done: { label: "完成", className: "bg-green-50 text-green-700 border-green-200" },
-    idea: { label: "構思中", className: "bg-purple-50 text-purple-700 border-purple-200" },
+    todo:    { label: "進行中", className: "bg-accent-light text-accent border-accent/20" },
+    done:    { label: "完成",   className: "bg-green-50 text-green-700 border-green-200" },
+    pending: { label: "待開始", className: "bg-gray-50 text-gray-500 border-gray-200" },
   };
-  const { label, className } = config[status];
+  const { label, className } = config[derived];
   return (
-    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full border", className)}>
+    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full border whitespace-nowrap", className)}>
       {label}
     </span>
   );

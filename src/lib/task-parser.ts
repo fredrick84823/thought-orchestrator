@@ -97,9 +97,11 @@ export function parseTodoMarkdown(markdown: string): ParsedTodo {
   let lastUpdated: string | null = null;
   let currentGroup: TaskGroup | null = null;
   let isIdeaSection = false;
+  let isQuoteSection = false;
   let groupIndex = 0;
   let subtaskIndex = 0;
   let ideaIndex = 0;
+  const quotes: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -130,6 +132,13 @@ export function parseTodoMarkdown(markdown: string): ParsedTodo {
       }
 
       const headingText = trimmed.replace(/^##\s+/, "");
+      const lowerHeading = headingText.toLowerCase();
+      isQuoteSection = lowerHeading.includes("句子") || lowerHeading.includes("quote");
+      if (isQuoteSection) {
+        currentGroup = null;
+        continue;
+      }
+
       const { emoji, status } = parseGroupMeta(headingText);
       isIdeaSection = status === "idea";
       groupIndex++;
@@ -170,16 +179,19 @@ export function parseTodoMarkdown(markdown: string): ParsedTodo {
       continue;
     }
 
+    // 句子區塊的列表項
+    if (isQuoteSection && /^[-*]\s+/.test(trimmed)) {
+      const text = trimmed.replace(/^[-*]\s+/, "").trim();
+      if (text && text !== "待填入") quotes.push(text);
+      continue;
+    }
+
     if (!currentGroup) continue;
 
-    // **狀態** 或 **描述** 行（Bold 鍵值對）
-    const boldKeyValue = trimmed.match(/^\*\*(.+?)\*\*[：:]\s*(.+)$/);
+    // **描述** 行（支援有無 list 前綴）
+    const boldKeyValue = trimmed.match(/^(?:[-*]\s+)?\*\*(描述|Description)\*\*[：:]\s*(.+)$/);
     if (boldKeyValue) {
-      const key = boldKeyValue[1];
-      const value = boldKeyValue[2];
-      if (key === "描述" || key === "Description") {
-        currentGroup.description = value.trim();
-      }
+      currentGroup.description = boldKeyValue[2].trim();
       continue;
     }
 
@@ -209,6 +221,7 @@ export function parseTodoMarkdown(markdown: string): ParsedTodo {
 
   return {
     title,
+    quotes,
     groups: groups.filter((g) => g.subtasks.length > 0 || g.description),
     ideas,
     lastUpdated,

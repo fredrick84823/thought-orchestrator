@@ -19,6 +19,7 @@ export interface TaskGroup {
 
 export interface ParsedTodo {
   title: string;
+  quotes: string[];
   groups: TaskGroup[];
   ideas: IdeaItem[];
   lastUpdated: string | null;

@@ -96,6 +96,17 @@ export default async function Home() {
           )}
         </div>
 
+        {/* Quotes */}
+        {data.quotes.length > 0 && (
+          <div className="space-y-2">
+            {data.quotes.map((quote, i) => (
+              <blockquote key={i} className="border-l-2 border-accent pl-4 text-muted-foreground italic text-sm">
+                {quote}
+              </blockquote>
+            ))}
+          </div>
+        )}
+
         {/* Active Task Groups */}
         {activeGroups.length > 0 && (
           <section>
