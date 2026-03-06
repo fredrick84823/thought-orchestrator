@@ -1,18 +1,33 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { parseTodoMarkdown } from "@/lib/task-parser";
+import { fetchTodoFromGitHub } from "@/lib/github-fetcher";
 import { TaskCard } from "@/components/TaskCard";
 import { IdeaCard } from "@/components/IdeaCard";
-import { Brain, RefreshCw } from "lucide-react";
+import { Brain, RefreshCw, Github } from "lucide-react";
 
-async function getTasks() {
+type DataSource = "github" | "local";
+
+async function getTasks(): Promise<{ content: string; source: DataSource }> {
+  // 優先從 GitHub thoughts repo 讀取
+  if (process.env.GITHUB_TOKEN) {
+    try {
+      const content = await fetchTodoFromGitHub();
+      return { content, source: "github" };
+    } catch (err) {
+      console.warn("[getTasks] GitHub 讀取失敗，切換為本地 fallback：", err);
+    }
+  }
+
+  // Fallback：讀本地 TODO.md
   const todoPath = path.join(process.cwd(), "TODO.md");
   const content = await fs.readFile(todoPath, "utf-8");
-  return parseTodoMarkdown(content);
+  return { content, source: "local" };
 }
 
 export default async function Home() {
-  const data = await getTasks();
+  const { content, source } = await getTasks();
+  const data = parseTodoMarkdown(content);
 
   const totalSubtasks = data.groups.reduce((acc, g) => acc + g.subtasks.length, 0);
   const completedSubtasks = data.groups.reduce(
@@ -36,6 +51,18 @@ export default async function Home() {
             <h1 className="font-heading text-2xl text-foreground">
               Thought Orchestrator
             </h1>
+            {/* 資料來源指示器 */}
+            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${
+              source === "github"
+                ? "bg-accent-light text-accent border-accent/20"
+                : "bg-muted text-muted-foreground border-border"
+            }`}>
+              {source === "github" ? (
+                <><Github className="w-3 h-3" /> thoughts repo</>
+              ) : (
+                "本地 TODO.md"
+              )}
+            </span>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
@@ -116,13 +143,14 @@ export default async function Home() {
           <div className="text-center py-20 text-muted-foreground">
             <Brain className="w-12 h-12 mx-auto mb-4 opacity-30" />
             <p className="font-heading text-xl">TODO.md 尚無資料</p>
-            <p className="text-sm mt-1">在根目錄新增 TODO.md 開始記錄你的想法</p>
+            <p className="text-sm mt-1">設定 GITHUB_TOKEN 或在根目錄新增 TODO.md</p>
           </div>
         )}
       </main>
 
       <footer className="border-t border-border mt-16 py-6 text-center text-xs text-muted-foreground">
-        Thought Orchestrator · 資料來源：TODO.md
+        Thought Orchestrator · 資料來源：
+        {source === "github" ? "github.com/fredrick84823/thoughts" : "本地 TODO.md"}
       </footer>
     </div>
   );
